@@ -1,79 +1,58 @@
-from io import StringIO
-import numpy as np
 import json
+import numpy as np
+import pandas as pd
 
-SEQ_LEN = 10
+def to_json(s):
+    js = json.loads(s)
+    s1 = []
+    for j in js:
+        if isinstance(j, list):
+            s1.append(j)
+        if isinstance(j, str):
+            a = []
+            a.append(j)
+            s1.append(a)
+    return s1
 
-def createRow(visited set, cur int) - np.array
-    row = []
-    for i in range(SEQ_LEN)
-        row.append(1 if i+1 in visited else 0)
-    return np.array(row)
+def matrix_transpose(js):
+    groups_ranks = dict(enumerate(js))
+    objects = [item for sublist in js for item in sublist]
+    object_to_id = {v: k for k, v in dict(enumerate(objects)).items()}
+    matrix = np.zeros((len(objects), len(objects)))
+    prev_objects = []
+    for rank, group in groups_ranks.items():
+        ids = [object_to_id[x] for x in group]
+        self_ids = np.array(list(zip(ids, ids)))
+        matrix[self_ids[:, :, None], ids] = 1
+        matrix[np.array(prev_objects, dtype=np.int8)[:, None], ids] = 1
+        prev_objects.extend(ids)
 
-def createMatrix(data list) - np.array
-    visited = set()
-    matrix = list()
+    result = pd.DataFrame(matrix, columns=object_to_id.keys(), index=object_to_id.keys())
+    result_t = result.transpose()
+    return result, result_t
 
-    for elem in data
-        if type(elem) == str
-            visited.add(int(elem))
-            row = createRow(visited=visited, cur=int(elem))
-            matrix.append({'num' int(elem), 'row' row})
-        else
-            for subelem in elem
-                visited.add(int(subelem))
-            for subelem in elem
-                row = createRow(visited=visited, cur=int(subelem))
-                matrix.append({'num' int(subelem), 'row' row})
+def mult(df1, df2):
+    res = df1.copy()
+    for c in res.columns:
+        for i in res.index:
+            res[c][i] = df1[c][i] * df2[c][i]
+    return res
 
-    matrix.sort(key=(lambda x x['num']))
-    raw = [elem['row'] for elem in matrix]
+def task(str1, str2):
+    j1 = to_json(str1)
+    j2 = to_json(str2)
 
-    return np.array(raw)
+    m1, m1_t = matrix_transpose(j1)
+    m2, m2_t = matrix_transpose(j2)
 
-def findErr(json_path str) - list
-    data = json.loads(open(json_path).read())
+    m12 = mult(m1, m2)
+    m12_t = mult(m1_t, m2_t)
 
-    matrix1 = createMatrix(data['input1'])
-    matrix2 = createMatrix(data['input2'])
-
-    matrix12 = matrix1  matrix2
-    matrix12T = matrix1.T  matrix2.T
-
-    criterion = np.logical_or(matrix12, matrix12T)
-
-    answer = []
-    for i in range(criterion.shape[0])
-        for j in range(i)
-            if not criterion[i][j]
-                answer.append([j+1, i+1])
-    
-    flag = True
-    for row in data['output']
-        flag = ([int(row[0]), int(row[1])] in answer )
-        if not flag
-            print(fОшибочка {row})
-    if flag
-        print(Всё прошло успешно!)
-
-    return answer
-
-def task(str1, str2) - list
-    str1 = eval(str1)
-    str2 = eval(str2)    
-    
-    matrix1 = createMatrix(str1)
-    matrix2 = createMatrix(str2)
-
-    matrix12 = matrix1  matrix2
-    matrix12T = matrix1.T  matrix2.T
-
-    criterion = np.logical_or(matrix12, matrix12T)
-
-    answer = []
-    for i in range(criterion.shape[0])
-        for j in range(i)
-            if not criterion[i][j]
-                answer.append([str(j+1), str(i+1)])
-                
-    return answer
+    result = m12.copy()
+    contr = []
+    for c in result.columns:
+        for i in result.index:
+            result[c][i] = m12[c][i] + m12_t[c][i]
+            if result[c][i] == 0.0 and [i, c] not in contr and [c, i] not in contr:
+                contr.append([c, i])
+    return contr
